@@ -1,11 +1,11 @@
 name: Build Floating Note APK
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'FloatingNoteAndroid_buildable_project.zip'
       - '.github/workflows/build.yml'
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,8 +24,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
