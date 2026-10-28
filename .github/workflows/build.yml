@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'FloatingNoteAndroid_buildable_project.zip'
+      - 'FloatingNoteAndroid_complete.zip'
       - '.github/workflows/build.yml'
 
 permissions:
@@ -13,6 +13,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout
@@ -24,34 +27,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Find Android SDK Manager
-        shell: bash
-        run: |
-          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" \
-            -type f -name sdkmanager 2>/dev/null | head -n 1)"
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: sdkmanager was not found."
-            find "$SDK_ROOT" -maxdepth 4 -type f \
-              -name sdkmanager 2>/dev/null || true
-            exit 1
-          fi
-
-          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
-          echo "Found SDK Manager: $SDKMANAGER"
-
       - name: Accept Android licenses
         shell: bash
-        run: yes | "$SDKMANAGER" --licenses || true
-
-      - name: Install Android SDK packages
         run: |
-          "$SDKMANAGER" \
-            "platform-tools" \
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses \
+            >/dev/null 2>&1 || true
+
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
+          "$SDKMANAGER" "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
@@ -62,13 +49,12 @@ jobs:
 
       - name: Extract project
         run: |
-          unzip FloatingNoteAndroid_buildable_project.zip \
-            -d extracted
-          cd extracted/FloatingNoteAndroid
+          unzip FloatingNoteAndroid_complete.zip -d extracted
+          cd extracted
           gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FloatingNote-APK
-          path: extracted/FloatingNoteAndroid/app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/app/build/outputs/apk/debug/app-debug.apk
